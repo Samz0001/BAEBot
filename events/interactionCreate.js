@@ -1,13 +1,29 @@
 const fs = require('fs');
-const { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, PermissionsBitField, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, PermissionsBitField, EmbedBuilder, ButtonBuilder, ButtonStyle, Events } = require('discord.js');
 
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
-    // Support staff role ID
-    const supportStaffRoleId = '878856351747551244'; // Replace this with your actual support staff role ID
+    interaction.client.on(Events.GuildMemberAdd, async (member) => {
+      const welcomeChannelId = 'YOUR_WELCOME_CHANNEL_ID';
 
-    // Handle Slash Commands
+      const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
+      if (!welcomeChannel) return;
+
+      const memberCount = member.guild.memberCount;
+
+      const embed = new EmbedBuilder()
+        .setColor('#FFA500')
+        .setTitle(`Welcome to Bharat Ascend Esports, Enjoy Your Stay Here!`)
+        .setDescription(`welcome, ${member} to BAE Family. Enjoy Your Stay!\n\n• Get your game roles in <#ROLE_CHANNEL_ID> to access various channels.\n• Remember to read the <#RULES_CHANNEL_ID>.\n• [Link to server invite](https://discord.gg/your-server-invite-link)\n\nYou are our **${memberCount}th** member!`)
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+        .setFooter({ text: `Welcome to Bharat Ascend Esports!`, iconURL: member.guild.iconURL({ dynamic: true }) });
+
+      await welcomeChannel.send({ embeds: [embed] });
+    });
+
+    const supportStaffRoleId = '878856351747551244';
+
     if (interaction.isCommand()) {
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command) return;
@@ -23,7 +39,6 @@ module.exports = {
       }
     }
 
-    // Handle Create Ticket Button
     if (interaction.isButton()) {
       if (interaction.customId === 'create_ticket') {
         const modal = new ModalBuilder()
@@ -49,7 +64,6 @@ module.exports = {
       }
     }
 
-    // Handle Modal Submit for Ticket Creation
     if (interaction.isModalSubmit()) {
       if (interaction.customId === 'ticket_modal') {
         const name = interaction.fields.getTextInputValue('nameInput');
@@ -64,7 +78,7 @@ module.exports = {
 
         const ticketChannel = await interaction.guild.channels.create({
           name: channelName,
-          type: 0,  
+          type: 0,
           permissionOverwrites: [
             {
               id: interaction.guild.id,
@@ -75,7 +89,7 @@ module.exports = {
               allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
             },
             {
-              id: supportStaffRoleId,  // Allow access for support staff role
+              id: supportStaffRoleId,
               allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
             }
           ]
@@ -113,12 +127,10 @@ module.exports = {
       }
     }
 
-    // Handle Close Ticket Button
     if (interaction.isButton()) {
       const ticketChannel = interaction.channel;
 
       if (interaction.customId === 'close_ticket') {
-        // Allow the user who created the ticket or support staff to close it
         if (interaction.user.id !== ticketChannel.name.split('-')[1] && !interaction.member.roles.cache.has(supportStaffRoleId)) {
           return interaction.reply({ content: "You don't have permission to close this ticket.", ephemeral: true });
         }
@@ -143,15 +155,13 @@ module.exports = {
         }
       }
 
-      // Handle Delete Ticket Button
       if (interaction.customId === 'delete_ticket') {
-        // Only support staff can delete the ticket
-        if (!interaction.member.roles.cache.has(878856350736732170)) {
+        if (!interaction.member.roles.cache.has(supportStaffRoleId)) {
           return interaction.reply({ content: "You don't have permission to delete this ticket.", ephemeral: true });
         }
 
         await interaction.reply({ content: 'Deleting the ticket channel...', ephemeral: true });
-        setTimeout(() => ticketChannel.delete(), 3000);  // Delete after 3 seconds
+        setTimeout(() => ticketChannel.delete(), 3000);
       }
     }
   },
