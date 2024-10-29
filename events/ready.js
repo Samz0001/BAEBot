@@ -1,6 +1,6 @@
 const { REST, Routes ,ActivityType} = require('discord.js');
 const fs = require('fs');
-const { token } = require('../config/config.json');
+const { token ,guildId,clientId} = require('../config/config.json');
 
 module.exports = {
   name: 'ready',
@@ -32,7 +32,7 @@ module.exports = {
       console.log('Started refreshing (/) commands globally');
 
       await rest.put(
-        Routes.applicationCommands(client.user.id),
+        Routes.applicationCommands(client.user.id,guildId,clientId),
         { body: commands }
       );
 
