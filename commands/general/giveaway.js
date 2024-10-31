@@ -76,7 +76,7 @@ module.exports = {
       const resultEmbed = new EmbedBuilder()
         .setTitle('🎉 Giveaway Ended 🎉')
         .setDescription(`Prize: **${prize}**\nWinners: ${winnerMentions || 'No winners'}`)
-        .setColor('#00FF00')
+        .setColor('FFFF00')
         .setFooter({ text: 'Thanks for participating!' })
         .setTimestamp();
 

@@ -4,24 +4,6 @@ const { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, Permis
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
-    interaction.client.on(Events.GuildMemberAdd, async (member) => {
-      const welcomeChannelId = 'YOUR_WELCOME_CHANNEL_ID';
-
-      const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
-      if (!welcomeChannel) return;
-
-      const memberCount = member.guild.memberCount;
-
-      const embed = new EmbedBuilder()
-        .setColor('#FFA500')
-        .setTitle(`Welcome to Bharat Ascend Esports, Enjoy Your Stay Here!`)
-        .setDescription(`welcome, ${member} to BAE Family. Enjoy Your Stay!\n\n• Get your game roles in <#ROLE_CHANNEL_ID> to access various channels.\n• Remember to read the <#RULES_CHANNEL_ID>.\n• [Link to server invite](https://discord.gg/your-server-invite-link)\n\nYou are our **${memberCount}th** member!`)
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-        .setFooter({ text: `Welcome to Bharat Ascend Esports!`, iconURL: member.guild.iconURL({ dynamic: true }) });
-
-      await welcomeChannel.send({ embeds: [embed] });
-    });
-
     const supportStaffRoleId = '878856351747551244';
 
     if (interaction.isCommand()) {
@@ -136,7 +118,17 @@ module.exports = {
         }
 
         const messages = await ticketChannel.messages.fetch();
-        const transcript = messages.map(m => `${m.author.tag}: ${m.content}`).reverse().join('\n');
+        const transcript = messages.map(m => {
+          let content = `${m.author.tag}: ${m.content}`;
+          
+          // Check if there are any attachments and append their URLs to the transcript
+          if (m.attachments.size > 0) {
+            const attachmentLinks = m.attachments.map(att => att.url).join('\n');
+            content += `\nAttachments:\n${attachmentLinks}`;
+          }
+          
+          return content;
+        }).reverse().join('\n');
 
         const transcriptChannel = interaction.guild.channels.cache.get('1300677910205566999');
         if (transcriptChannel && transcriptChannel.isTextBased()) {
