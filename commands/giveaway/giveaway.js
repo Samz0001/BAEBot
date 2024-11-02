@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
-const ms = require('ms'); // Import ms package for parsing durations like '10m', '2h', '1d'
+const ms = require('ms');
+const giveawayStore = require('../../giveawayStore');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,17 +23,14 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    // Permission check for managing messages
     if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
       return interaction.reply({ content: "You don't have permission to organize giveaways!", ephemeral: true });
     }
 
-    // Get command options
     const prize = interaction.options.getString('prize');
     const durationInput = interaction.options.getString('duration');
     const winnersCount = interaction.options.getInteger('winners');
 
-    // Convert duration to milliseconds using the ms package
     const duration = ms(durationInput);
     if (!duration) {
       return interaction.reply({ content: 'Invalid duration format. Use something like 10m, 2h, or 1d.', ephemeral: true });
@@ -40,31 +38,42 @@ module.exports = {
 
     const endDate = new Date(Date.now() + duration);
 
-    // Create and send the giveaway embed
     const embed = new EmbedBuilder()
       .setTitle('🎉 Giveaway 🎉')
       .setDescription(`Prize: **${prize}**\nReact with 🎉 to enter!\nWinners: **${winnersCount}**`)
       .setColor('#FF0000')
       .setFooter({ text: `Ends at ${endDate.toUTCString()}` })
-      .setTimestamp(endDate); // Set timestamp to end date for visual cue
+      .setTimestamp(endDate);
 
     const giveawayMessage = await interaction.reply({ embeds: [embed], fetchReply: true });
     await giveawayMessage.react('🎉');
 
-    // Schedule the end of the giveaway
-    setTimeout(async () => {
-      const updatedMessage = await interaction.channel.messages.fetch(giveawayMessage.id);
-      const reactions = updatedMessage.reactions.cache.get('🎉');
+    giveawayStore.giveaways[giveawayMessage.id] = {
+      prize,
+      winnersCount,
+      entrants: new Set(),
+      messageId: giveawayMessage.id,
+      endDate
+    };
 
-      // Fetch users who reacted with 🎉
-      const users = await reactions.users.fetch();
-      const entrants = users.filter(user => !user.bot).map(user => user.id);
+    const collector = giveawayMessage.createReactionCollector({
+      filter: (reaction, user) => reaction.emoji.name === '🎉' && !user.bot,
+      time: duration,
+    });
+
+    collector.on('collect', (reaction, user) => {
+      giveawayStore.giveaways[giveawayMessage.id].entrants.add(user.id);
+      console.log(`Collected entrant: ${user.tag} (${user.id})`);
+    });
+
+    collector.on('end', async () => {
+      const entrants = Array.from(giveawayStore.giveaways[giveawayMessage.id].entrants);
+      console.log(`Final entrants: ${entrants}`);
 
       if (entrants.length === 0) {
         return interaction.followUp({ content: "No one participated in the giveaway!" });
       }
 
-      // Randomly select winners
       const winners = [];
       for (let i = 0; i < winnersCount; i++) {
         if (entrants.length === 0) break;
@@ -81,6 +90,7 @@ module.exports = {
         .setTimestamp();
 
       await interaction.followUp({ embeds: [resultEmbed] });
-    }, duration);  // Duration in milliseconds
+      delete giveawayStore.giveaways[giveawayMessage.id];
+    });
   }
 };

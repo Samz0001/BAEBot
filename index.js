@@ -31,5 +31,6 @@ for (const folder of commandFolders) {
 
   
 
+  require('./events/logs')(client);
 
   client.login(token);
